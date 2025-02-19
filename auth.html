@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Auth</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="config.js"></script>
+    <script>
+        firebase.initializeApp(config);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        function createUser(email, password) {
+            return auth.createUserWithEmailAndPassword(email, password);
+        }
+
+        function signIn(email, password) {
+            return auth.signInWithEmailAndPassword(email, password);
+        }
+
+        function signOutUser() {
+            return auth.signOut();
+        }
+
+        function updateUserProfile(user, data) {
+            return user.updateProfile(data);
+        }
+    </script>
+</head>
+
+<body class="auth-body">
+    <div class="auth-container">
+        <div class="auth-box">
+            <h2 id="auth-title" class="auth-title">Sign in to your account</h2>
+
+            <form id="auth-form" class="auth-form">
+                <div id="name-field" class="auth-input-group hidden">
+                    <input id="name" type="text" placeholder="Your name">
+                </div>
+
+                <div class="auth-input-group">
+                    <input id="email" type="email" placeholder="Email address" required>
+                    <input id="password" type="password" placeholder="Password" required>
+                </div>
+
+                <div id="auth-error" class="error-message"></div>
+
+                <button type="submit" id="auth-button" class="auth-button">
+                    Sign in
+                </button>
+            </form>
+
+            <p class="auth-toggle-text">
+                <span id="toggle-text">Don't have an account?</span>
+                <a href="#" id="toggle-link" class="auth-toggle-link">
+                    Sign up instead
+                </a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        let isLogin = true;
+
+        function toggleAuth() {
+            isLogin = !isLogin;
+            document.getElementById('auth-title').textContent = isLogin ? 'Sign in to your account' : 'Create your account';
+            document.getElementById('auth-button').textContent = isLogin ? 'Sign in' : 'Sign up';
+            document.getElementById('name-field').style.display = isLogin ? 'none' : 'block';
+
+            // Add or remove the 'required' attribute based on the mode
+            const nameInput = document.getElementById('name');
+            if (isLogin) {
+                nameInput.removeAttribute('required');
+            } else {
+                nameInput.setAttribute('required', '');
+            }
+
+            document.getElementById('toggle-text').textContent = isLogin ? 'Don\'t have an account?' : 'Already have an account?';
+            document.getElementById('toggle-link').textContent = isLogin ? 'Sign up instead' : 'Sign in instead';
+        }
+
+        document.getElementById('toggle-link').addEventListener('click', function (e) {
+            e.preventDefault();
+            toggleAuth();
+        });
+
+        document.getElementById('auth-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const name = document.getElementById('name').value;
+
+            try {
+                if (isLogin) {
+                    await signIn(email, password);
+                } else {
+                    const userCredential = await createUser(email, password);
+                    await updateUserProfile(userCredential.user, { displayName: name });
+
+                    const userRef = firebase.database().ref('users/' + userCredential.user.uid);
+                    await userRef.set({
+                        username: name,
+                        email: email,
+                        createdAt: new Date().toISOString()
+                    });
+                }
+                window.location.href = 'chat.html';
+            } catch (error) {
+                document.getElementById('auth-error').textContent = error.message;
+            }
+        });
+    </script>
+</body>
+
+</html>
